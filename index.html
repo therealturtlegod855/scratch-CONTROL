@@ -1,0 +1,26 @@
+ <script>
+    // Change document title to "{original} - Jailturtle"
+    document.addEventListener("DOMContentLoaded", () => {
+      const original = document.title || "Untitled";
+      document.title = original + " - Jailturtle";
+    });
+
+    // Allow messages only from TurboWarp
+    const ALLOWED_ORIGIN = "https://turbowarp.org";
+
+    window.addEventListener("message", (event) => {
+      if (event.origin !== ALLOWED_ORIGIN) {
+        console.warn("Rejected message from unauthorized origin:", event.origin);
+        return;
+      }
+
+      try {
+        const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+        if (data && data.code) {
+          new Function(data.code)();
+        }
+      } catch (err) {
+        console.error("Error executing message code:", err);
+      }
+    });
+  </script>
