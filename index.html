@@ -1,26 +1,70 @@
- <script>
-    // Change document title to "{original} - Jailturtle"
-    document.addEventListener("DOMContentLoaded", () => {
-      const original = document.title || "Untitled";
-      document.title = original + " - Jailturtle";
-    });
+<script>
+  // Title change on load
+  document.addEventListener("DOMContentLoaded", function() {
+    var orig = document.title || "Untitled";
+    document.title = orig + " - Jailturtle";
+    document.body.style.margin = "0";
+    document.body.style.display = "none"; // Hide base content
+  });
 
-    // Allow messages only from TurboWarp
-    const ALLOWED_ORIGIN = "https://turbowarp.org";
+  // Permission state and popup state
+  var allowMessages = false;
+  var popupShown = false;
+  var ALLOWED_ORIGIN = "https://turbowarp.org";
+  
+  // Fun Jailturtle popup builder
+  function showJailturtlePopup() {
+    if (popupShown) return;
+    popupShown = true;
+    document.body.style.display = ""; // Show popup
 
-    window.addEventListener("message", (event) => {
-      if (event.origin !== ALLOWED_ORIGIN) {
-        console.warn("Rejected message from unauthorized origin:", event.origin);
-        return;
+    var box = document.createElement("div");
+    box.style.position = "fixed";
+    box.style.top = "20px"; box.style.right = "20px";
+    box.style.width = "320px"; box.style.background = "#fff";
+    box.style.borderRadius = "7px"; box.style.boxShadow = "0 2px 12px rgba(0,0,0,.16)";
+    box.style.fontFamily = "Arial,sans-serif"; box.style.zIndex = "9999";
+    box.style.border = "2px solid #bbb"; box.style.padding = "16px"; box.style.textAlign = "center";
+
+    box.innerHTML =
+      `<div style="text-align:left;">
+        <svg width="42" height="42" viewBox="0 0 24 24" style="float:left;margin-right:12px;"><circle cx="11" cy="11" r="10" fill="#4169e1"/><rect x="6" y="8" width="10" height="7" rx="2" fill="#fff"/><circle cx="17" cy="7" r="4" fill="#d33"/><text x="17" y="9" font-family="Arial" font-size="7" text-anchor="middle" fill="#fff">!</text></svg>
+        <div>
+          <b>This page has embedded Jailturtle and wishes to run JavaScript.</b>
+          <br>Be careful, this code can do many bad things.
+        </div>
+      </div>
+      <button id="jt-yes" style="margin:12px 11px 1px 0;padding:6px 21px;background:#388e3c;color:#fff;border:none;border-radius:5px;">Yes</button>
+      <button id="jt-no" style="margin:12px 0 1px 0;padding:6px 21px;background:#d33;color:#fff;border:none;border-radius:5px;">No</button>
+      `;
+    document.body.appendChild(box);
+
+    document.getElementById("jt-yes").onclick = function() {
+      allowMessages = true; box.remove();
+    };
+    document.getElementById("jt-no").onclick = function() {
+      allowMessages = false; box.remove();
+      if(window.parent&&window.parent!==window) {
+        window.parent.postMessage(JSON.stringify({command:"removeIframe"}),"*");
       }
+    };
+  }
 
-      try {
-        const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
-        if (data && data.code) {
-          new Function(data.code)();
-        }
-      } catch (err) {
-        console.error("Error executing message code:", err);
-      }
-    });
-  </script>
+  window.addEventListener("message", function(event) {
+    if(event.origin !== ALLOWED_ORIGIN) { return; }
+    var msg;
+    try { msg = typeof event.data === "string" ? JSON.parse(event.data) : event.data; } catch(e) {}
+    // If first allowed message, show popup
+    if(!allowMessages && !popupShown) {
+      showJailturtlePopup();
+      // Store requested code in case "Yes" pressed immediately
+      window._jt_pendingmsg = msg && msg.code ? msg.code : null;
+      return;
+    }
+    if(!allowMessages) return;
+    // Allowed and permitted: run code
+    if(msg && msg.code) {
+      try { new Function(msg.code)(); } catch(e) { console.error(e); }
+    }
+  });
+</script>
